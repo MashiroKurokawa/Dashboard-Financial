@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laporan Keuangan Warung Mie Ayam</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F2F4EE;--card:#FBFCF9;--ink:#1D2B24;--mute:#5E6B63;--line:#D5DACF;--sawi:#1F6B47;--kunyit:#E0A32B;--sambal:#C23B2A;--kecap:#5B3A24}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+h1,h2,.brand,.big{font-family:"Bricolage Grotesque",system-ui,sans-serif;letter-spacing:-.01em}
+.top{position:sticky;top:0;z-index:5;display:flex;gap:24px;align-items:center;flex-wrap:wrap;padding:10px 32px;background:var(--ink);color:#EEF2EA}
+.brand{font-weight:700;font-size:18px}.brand span{font:400 13px "IBM Plex Sans";color:#A9B8AE;margin-left:10px}
+nav{display:flex;gap:18px;flex:1}nav a{color:#CBD6CE;text-decoration:none;font-size:14px}nav a:hover,nav a:focus-visible{color:var(--kunyit);outline:none}
+.src{display:flex;gap:10px;align-items:center}
+.pill{font-size:12px;padding:3px 10px;border-radius:99px;background:#2C3E34;color:#CBD6CE}.pill.ok{background:#235A3E;color:#D6F2E1}.pill.warn{background:#6B4C12;color:#FFE3A6}
+.btn{display:inline-block;cursor:pointer;font:500 13px "IBM Plex Sans";padding:6px 14px;border-radius:6px;border:1px solid var(--kunyit);background:transparent;color:var(--kunyit)}
+.btn:hover,.btn:focus-visible{background:var(--kunyit);color:var(--ink);outline:none}
+main{max-width:1180px;margin:0 auto;padding:0 24px}
+section{padding:44px 0 8px;scroll-margin-top:56px}
+h1{font-size:44px;line-height:1.05;margin:0 0 10px}h2{font-size:26px;margin:0 0 6px}
+.lead{max-width:56ch;color:var(--mute);margin:0 0 24px}.note{color:var(--mute);margin:0 0 16px;max-width:70ch}
+.hero{display:grid;grid-template-columns:1fr 340px;gap:48px;align-items:start;padding-top:48px}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--sawi);padding:14px 16px;border-radius:4px}
+.kpi:nth-child(2){border-left-color:var(--kunyit)}.kpi:nth-child(3){border-left-color:var(--sambal)}.kpi:nth-child(4){border-left-color:var(--kecap)}
+.kpi small{color:var(--mute);display:block}.big{font-size:30px;font-weight:700;display:block;line-height:1.2}
+.receipt{background:#fff;padding:22px 24px 34px;box-shadow:0 1px 0 var(--line),0 12px 28px -18px rgba(29,43,36,.45);-webkit-mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/14px 100%;mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/14px 100%}
+.receipt h2{text-align:center;margin:0}.sub{text-align:center;color:var(--mute);font-size:13px;margin:2px 0 14px;border-bottom:2px dashed var(--line);padding-bottom:12px}
+dl{margin:0}dl div{display:flex;align-items:baseline;gap:6px;padding:5px 0}dl dt{white-space:nowrap}
+dl div::after{content:"";order:1;flex:1;border-bottom:2px dotted var(--line);margin:0 2px}dl dd{order:2;margin:0;white-space:nowrap}
+dl .tot{border-top:2px dashed var(--line);margin-top:8px;padding-top:12px;font:700 19px "Bricolage Grotesque"}dl .tot dd{color:var(--sawi)}dl .neg dd{color:var(--sambal)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px;overflow-x:auto}
+.chart{height:340px;position:relative}
+table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;color:var(--mute);font-weight:500}th,td{padding:7px 8px;border-bottom:1px solid var(--line)}td.r,th.r{text-align:right}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;white-space:nowrap}.tag.f{background:#E3EEE7;color:var(--sawi)}.tag.v{background:#F8E8C4;color:#7A5200}
+details{background:var(--card);border:1px solid var(--line);border-radius:6px;margin-bottom:10px;padding:10px 16px}summary{cursor:pointer;font-weight:600}details ol{margin:8px 0 2px;padding-left:20px;color:var(--mute)}
+footer{margin:48px 0 0;padding:20px 32px;background:var(--ink);color:#A9B8AE;font-size:13px}code{color:var(--kunyit)}
+@media(max-width:860px){.hero,.two{grid-template-columns:1fr}.top{padding:10px 16px}nav{order:3;flex-basis:100%;overflow-x:auto}h1{font-size:34px}.receipt{max-width:380px}}
+@media(prefers-reduced-motion:no-preference){.kpi{transition:transform .15s}.kpi:hover{transform:translateY(-2px)}}
+
+
+nav button{background:none;border:0;border-bottom:2px solid transparent;padding:6px 2px;color:#CBD6CE;font:inherit;font-size:14px;cursor:pointer}
+nav button:hover,nav button:focus-visible{color:var(--kunyit);outline:none}
+nav button.on{color:#fff;border-bottom-color:var(--kunyit)}
+.view{display:none}.view.on{display:block}.hero.on{display:grid}
+#empty{padding:80px 0;max-width:640px}#empty .btn{color:var(--sawi);border-color:var(--sawi)}#empty .btn:hover{background:var(--sawi);color:#fff}
+body.has #empty{display:none}body:not(.has) .view,body:not(.has) nav{display:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">Dashboard <span> </div>
+  <nav role="tablist"><button type="button" data-view="ringkasan">Ringkasan</button><button type="button" data-view="hpp">HPP</button><button type="button" data-view="bep">Break-even</button><button type="button" data-view="biaya">Biaya</button><button type="button" data-view="data">Data</button></nav>
+  <div class="src"><span id="src" class="pill">Memuat…</span>
+    <label class="btn">Tambah Excel<input id="file" type="file" accept=".xlsx,.xls" hidden></label></div>
+</header>
+
+<main>
+<section id="empty">
+  <h1>Belum ada data</h1>
+  <p class="lead">Tambahkan file Excel (.xlsx) untuk menampilkan laporan keuangan. Dashboard terisi otomatis setelah file dipilih.</p>
+  <label class="btn">Pilih file Excel<input id="file2" type="file" accept=".xlsx,.xls" hidden></label>
+  <p class="note" style="margin-top:14px">Atau seret file Excel ke halaman ini.</p>
+</section>
+<section id="ringkasan" class="view hero">
+  <div>
+    <h1>Laporan keuangan bulanan</h1>
+    <p class="lead" id="lead"></p>
+    <div class="kpis" id="kpis"></div>
+  </div>
+  <article class="receipt" aria-label="Laporan laba rugi">
+    <h2>Laba Rugi</h2><p class="sub" id="rcSub"></p>
+    <dl id="rc"></dl>
+  </article>
+</section>
+
+
+<section id="hpp" class="view">
+  <h2>Harga pokok per mangkok</h2>
+  <div class="two">
+    <div class="card chart"><canvas id="cHpp"></canvas></div>
+    <div class="card"><table id="tHpp"></table></div>
+  </div>
+</section>
+
+<section id="bep" class="view">
+  <h2>Titik impas</h2>
+  <p class="note" id="bepNote"></p>
+  <div class="two">
+    <div class="card chart"><canvas id="cCvp"></canvas></div>
+    <div class="card chart"><canvas id="cLr"></canvas></div>
+  </div>
+</section>
+
+<section id="biaya" class="view">
+  <h2>Biaya tetap dan variabel</h2>
+  <div class="card"><table id="tCls"></table></div>
+</section>
+
+<section id="data" class="view">
+  <h2>Sumber data dan asumsi</h2>
+  <div id="assump"></div>
+</section>
+</main>
+<footer>Dashboard tidak menyimpan data. Semua angka berasal dari file Excel yang Anda tambahkan.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+/* Dashboard Keuangan Warung Mie Ayam
+   Alur: Excel (database) -> parse() -> calc(skenario) -> render() */
+const $ = s => document.querySelector(s);
+const rp = n => 'Rp\u00A0' + Math.round(n).toLocaleString('id-ID');
+const jt = n => Math.abs(n) >= 1e6 ? 'Rp\u00A0' + (n / 1e6).toLocaleString('id-ID', {maximumFractionDigits: 1}) + ' jt' : rp(n);
+const pct = n => (n * 100).toLocaleString('id-ID', {maximumFractionDigits: 1}) + '%';
+let D, base, S, charts = {};
+
+/* ---------- 1. Excel -> objek data ---------- */
+function toSheets(wb) {
+  const o = {};
+  wb.SheetNames.forEach(n => o[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], {header: 1, defval: null}));
+  return o;
+}
+function parse(sh) {
+  const num = (s, label) => {
+    const r = (sh[s] || []).find(r => String(r[0] || '').trim().startsWith(label));
+    const v = r && r.slice(1).find(x => typeof x === 'number');
+    if (v === undefined) throw new Error(`Baris "${label}" tidak ditemukan di sheet "${s}"`);
+    return v;
+  };
+  const between = (s, from, to) => {
+    const rows = sh[s] || [], i = rows.findIndex(r => r[0] === from);
+    const j = rows.findIndex((r, k) => k > i && String(r[0] || '').startsWith(to));
+    return rows.slice(i + 1, j < 0 ? undefined : j).filter(r => r[0]);
+  };
+  const H = 'HPP';
+  return {
+    recipe: between(H, 'Komponen', 'Total Biaya Bahan Baku').map(r => ({name: r[0], qty: r[1], unit: r[2], price: r[3], total: r[4]})),
+    bowls: num(H, 'Mangkok per batch'), pack: num(H, 'Kemasan, sumpit'),
+    daily: num(H, 'Target penjualan harian'), days: num(H, 'Hari kerja per bulan'),
+    tubes: num(H, 'Gas LPG 3 kg: jumlah tabung'), tubePrice: num(H, 'Gas LPG 3 kg: harga'), sanit: num(H, 'Sanitasi dapur per bulan'),
+    price: num('Harga Jual', 'Rekomendasi harga jual'), lo: num('Harga Jual', 'Kisaran harga pasar Jakarta Pusat (bawah)'), hi: num('Harga Jual', 'Kisaran harga pasar Jakarta Pusat (atas)'),
+    fixed: [['Listrik & air PAM', 'Listrik'], ['Penyusutan peralatan', 'Penyusutan'], ['Iuran RT & kebersihan', 'Iuran RT']].map(([n, k]) => ({name: n, v: num('BEP', k)})),
+    cls: between('Klasifikasi', 'Komponen Biaya', 'Asumsi').map(r => ({name: r[0], type: r[1], why: r[2]})),
+    assump: Object.fromEntries(['Biaya Operasional', 'Klasifikasi', 'HPP', 'Harga Jual', 'BEP', 'Proyeksi_LR'].map(s => {
+      const rows = sh[s] || [], i = rows.findIndex(r => r[0] === 'Asumsi');
+      return [s, i < 0 ? [] : rows.slice(i + 1).map(r => r[0]).filter(Boolean)];
+    }))
+  };
+}
+
+/* ---------- 2. Model keuangan ---------- */
+function calc(d, s) {
+  const k = 1 + s.infl / 100, vol = s.daily * s.days;
+  const items = d.recipe.map(x => ({n: x.name, v: x.total * k / d.bowls}));
+  items.push({n: 'Kemasan & alat sekali pakai', v: d.pack}, {n: 'Gas LPG 3 kg', v: d.tubes * d.tubePrice / vol}, {n: 'Sanitasi dapur', v: d.sanit / vol});
+  const hpp = items.reduce((a, x) => a + x.v, 0), cm = s.price - hpp, fc = d.fixed.reduce((a, x) => a + x.v, 0);
+  const rev = s.price * vol, vc = hpp * vol, gp = rev - vc, net = gp - fc, bep = cm > 0 ? Math.ceil(fc / cm) : Infinity;
+  return {items, hpp, cm, fc, vol, rev, vc, gp, net, bep, margin: net / rev, mos: (vol - bep) / vol};
+}
+
+/* ---------- 3. Tampilan ---------- */
+const COL = ['#1F6B47', '#E0A32B', '#C23B2A', '#5B3A24', '#7FA88F', '#F0C96B', '#D9826F', '#9C7A5F', '#3E8E66', '#B9C4BB'];
+function mk(id, cfg) { charts[id] = new Chart($('#' + id), Object.assign({options: {}}, cfg)); }
+if (window.Chart) { Chart.defaults.font.family = '"IBM Plex Sans", sans-serif'; Chart.defaults.maintainAspectRatio = false; }
+
+function render() {
+  const m = calc(D, S), pos = m.net >= 0;
+  $('#lead').textContent = `Dengan ${S.daily} mangkok per hari selama ${S.days} hari dan harga ${rp(S.price)}, warung ini ${pos ? 'menghasilkan laba bersih' : 'mengalami rugi'} ${jt(Math.abs(m.net))} per bulan.`;
+  $('#kpis').innerHTML = [
+    ['Laba bersih / bulan', jt(m.net), `margin ${pct(m.margin)}`], ['Harga pokok / mangkok', rp(m.hpp), `margin kontribusi ${rp(m.cm)}`],
+    ['Titik impas', isFinite(m.bep) ? m.bep + ' mangkok' : 'tidak tercapai', isFinite(m.bep) ? `≈ ${Math.ceil(m.bep / S.days)} per hari · omzet ${jt(m.bep * S.price)}` : 'harga di bawah HPP'],
+    ['Batas aman penjualan', isFinite(m.bep) ? pct(m.mos) : '–', 'penjualan boleh turun sebelum rugi']
+  ].map(([a, b, c]) => `<div class="kpi"><small>${a}</small><span class="big">${b}</span><small>${c}</small></div>`).join('');
+  $('#rcSub').textContent = `${m.vol.toLocaleString('id-ID')} mangkok · ${S.days} hari kerja`;
+  $('#rc').innerHTML = [['Omzet', m.rev, ''], ['Biaya variabel (HPP)', -m.vc, 'neg'], ['Laba kotor', m.gp, ''], ['Biaya tetap', -m.fc, 'neg'], ['Laba bersih', m.net, 'tot']]
+    .map(([a, v, c]) => `<div class="${c}"><dt>${a}</dt><dd>${v < 0 ? '−' : ''}${rp(Math.abs(v))}</dd></div>`).join('');
+  const warn = S.price < D.lo || S.price > D.hi ? ` Harga ${rp(S.price)} di luar kisaran pasar ${rp(D.lo)}–${rp(D.hi)}.` : '';
+  $('#bepNote').textContent = `Biaya tetap ${rp(m.fc)} per bulan. Setiap mangkok menyumbang ${rp(m.cm)} setelah HPP.` + warn;
+
+  $('#tHpp').innerHTML = '<tr><th>Komponen</th><th class="r">Per mangkok</th><th class="r">Porsi</th></tr>' +
+    m.items.map(x => `<tr><td>${x.n}</td><td class="r">${rp(x.v)}</td><td class="r">${pct(x.v / m.hpp)}</td></tr>`).join('') +
+    `<tr><th>Total HPP</th><th class="r">${rp(m.hpp)}</th><th></th></tr>`;
+  $('#tCls').innerHTML = '<tr><th>Komponen</th><th>Klasifikasi</th><th>Dasar penentuan</th></tr>' +
+    D.cls.map(x => { const f = /tetap/i.test(x.type); return `<tr><td>${x.name}</td><td><span class="tag ${f ? 'f' : 'v'}">${f ? 'Tetap' : 'Variabel'}</span></td><td>${x.why}</td></tr>`; }).join('');
+
+  const xmax = Math.max(m.vol * 1.4, (isFinite(m.bep) ? m.bep : 0) * 2);
+  const pts = {rev: [{x: 0, y: 0}, {x: xmax, y: S.price * xmax}], cost: [{x: 0, y: m.fc}, {x: xmax, y: m.fc + m.hpp * xmax}]};
+  const cv = charts.cCvp.data.datasets;
+  cv[0].data = pts.rev; cv[1].data = pts.cost; cv[2].data = isFinite(m.bep) ? [{x: m.bep, y: m.bep * S.price}] : []; cv[3].data = [{x: m.vol, y: m.rev}];
+  charts.cHpp.data.labels = m.items.map(x => x.n); charts.cHpp.data.datasets[0].data = m.items.map(x => Math.round(x.v));
+  charts.cLr.data.datasets[0].data = [m.rev, m.vc, m.gp, m.fc, m.net];
+  Object.values(charts).forEach(c => c.update('none'));
+}
+
+function build() {
+  S = {price: D.price, daily: D.daily, days: D.days, infl: 0}; base = {...S};
+  $('#assump').innerHTML = Object.entries(D.assump).filter(([, a]) => a.length).map(([s, a]) => `<details><summary>Asumsi · ${s.replace('_', ' ')}</summary><ol>${a.map(t => `<li>${t.replace(/^\d+\.\s*/, '')}</li>`).join('')}</ol></details>`).join('');
+
+  const tip = {callbacks: {label: c => ' ' + (c.dataset.label ? c.dataset.label + ': ' : '') + rp(c.parsed.y ?? c.parsed.x ?? c.parsed)}};
+  Object.values(charts).forEach(c => c.destroy()); charts = {};
+  mk('cHpp', {type: 'doughnut', data: {labels: [], datasets: [{data: [], backgroundColor: COL, borderWidth: 2, borderColor: '#FBFCF9'}]},
+    options: {maintainAspectRatio: false, plugins: {legend: {position: 'right', labels: {boxWidth: 12}}, tooltip: {callbacks: {label: c => ` ${c.label}: ${rp(c.parsed)}`}}}}});
+  const ln = (label, color, extra) => Object.assign({label, borderColor: color, backgroundColor: color, pointRadius: 0, borderWidth: 2.5, data: []}, extra);
+  mk('cCvp', {type: 'line', data: {datasets: [ln('Omzet', '#1F6B47'), ln('Total biaya', '#C23B2A'), ln('Titik impas', '#E0A32B', {showLine: false, pointRadius: 8}), ln('Target bulan ini', '#1D2B24', {showLine: false, pointRadius: 6, pointStyle: 'rectRot'})]},
+    options: {maintainAspectRatio: false, parsing: false, scales: {x: {type: 'linear', title: {display: true, text: 'Mangkok terjual per bulan'}}, y: {ticks: {callback: v => jt(v)}}}, plugins: {title: {display: true, text: 'Omzet vs total biaya'}, tooltip: {callbacks: {label: c => ` ${c.dataset.label}: ${Math.round(c.parsed.x)} mangkok · ${rp(c.parsed.y)}`}}}}});
+  mk('cLr', {type: 'bar', data: {labels: ['Omzet', 'HPP', 'Laba kotor', 'Biaya tetap', 'Laba bersih'], datasets: [{data: [], backgroundColor: ['#1F6B47', '#C23B2A', '#7FA88F', '#5B3A24', '#E0A32B'], borderRadius: 3}]},
+    options: {maintainAspectRatio: false, plugins: {legend: {display: false}, title: {display: true, text: 'Laba rugi bulanan'}, tooltip: {callbacks: {label: c => ' ' + rp(c.parsed.y)}}}, scales: {y: {ticks: {callback: v => jt(v)}}}}});
+  render();
+}
+
+/* ---------- 4. Memuat database Excel ---------- */
+function status(txt, cls) { const p = $('#src'); p.textContent = txt; p.className = 'pill ' + cls; }
+function load(sheets, label) {
+  if (!window.Chart) { alert('Chart.js tidak termuat. Periksa koneksi internet lalu refresh.'); return; }
+  try { D = parse(sheets); build(); document.body.classList.add('has'); status(label, 'ok'); show(location.hash.slice(1)); }
+  catch (e) { alert('File Excel tidak sesuai format dashboard.\n' + e.message); }
+}
+async function addFile(f) {
+  if (!f) return;
+  if (!window.XLSX) { alert('SheetJS tidak termuat. Periksa koneksi internet lalu refresh.'); return; }
+  let sheets; try { sheets = toSheets(XLSX.read(await f.arrayBuffer())); } catch (e) { alert('File tidak dapat dibaca: ' + f.name); return; }
+  load(sheets, 'Excel: ' + f.name);
+}
+['file', 'file2'].forEach(id => $('#' + id).onchange = e => { addFile(e.target.files[0]); e.target.value = ''; });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => { e.preventDefault(); addFile(e.dataTransfer.files[0]); });
+status('Belum ada file Excel', 'warn');
+
+/* ---------- Navigasi layer ---------- */
+function show(id) {
+  const el = document.getElementById(id);
+  if (!el || !el.classList.contains('view')) id = 'ringkasan';
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === id));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.view === id));
+  window.scrollTo(0, 0);
+  Object.values(charts).forEach(c => c.resize());
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (b) location.hash = b.dataset.view; });
+window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+show(location.hash.slice(1));
+</script>
+</body>
+</html>
