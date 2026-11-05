@@ -55,19 +55,19 @@ body.has #empty{display:none}body:not(.has) .view,body:not(.has) nav{display:non
   <div class="brand">Dashboard <span> </div>
   <nav role="tablist"><button type="button" data-view="ringkasan">Ringkasan</button><button type="button" data-view="hpp">HPP</button><button type="button" data-view="bep">Break-even</button><button type="button" data-view="biaya">Biaya</button><button type="button" data-view="data">Data</button></nav>
   <div class="src"><span id="src" class="pill">Memuat…</span>
-    <label class="btn">Tambah Excel<input id="file" type="file" accept=".xlsx,.xls" hidden></label></div>
+    <label class="btn"> + <input id="file" type="file" accept=".xlsx,.xls" hidden></label></div>
 </header>
 
 <main>
 <section id="empty">
   <h1>Belum ada data</h1>
-  <p class="lead">Tambahkan file Excel (.xlsx) untuk menampilkan laporan keuangan. Dashboard terisi otomatis setelah file dipilih.</p>
+  <p class="lead">Tambahkan file Excel (.xlsx) untuk menampilkan laporan keuangan. Dashboard akan terisi otomatis setelah file dipilih.</p>
   <label class="btn">Pilih file Excel<input id="file2" type="file" accept=".xlsx,.xls" hidden></label>
   <p class="note" style="margin-top:14px">Atau seret file Excel ke halaman ini.</p>
 </section>
 <section id="ringkasan" class="view hero">
   <div>
-    <h1>Laporan keuangan bulanan</h1>
+    <h1>Laporan Keuangan Bulanan</h1>
     <p class="lead" id="lead"></p>
     <div class="kpis" id="kpis"></div>
   </div>
@@ -79,7 +79,7 @@ body.has #empty{display:none}body:not(.has) .view,body:not(.has) nav{display:non
 
 
 <section id="hpp" class="view">
-  <h2>Harga pokok per mangkok</h2>
+  <h2>Harga Pokok penjualan</h2>
   <div class="two">
     <div class="card chart"><canvas id="cHpp"></canvas></div>
     <div class="card"><table id="tHpp"></table></div>
@@ -87,21 +87,26 @@ body.has #empty{display:none}body:not(.has) .view,body:not(.has) nav{display:non
 </section>
 
 <section id="bep" class="view">
-  <h2>Titik impas</h2>
+  <h2>Break-Even Point</h2>
   <p class="note" id="bepNote"></p>
   <div class="two">
     <div class="card chart"><canvas id="cCvp"></canvas></div>
     <div class="card chart"><canvas id="cLr"></canvas></div>
   </div>
+  <div class="card" style="margin-top:20px"><table id="tFix"></table></div>
 </section>
 
 <section id="biaya" class="view">
-  <h2>Biaya tetap dan variabel</h2>
+  <h2>Biaya Tetap (Fix Cost) dan Variabel Cost</h2>
   <div class="card"><table id="tCls"></table></div>
+  <h2 style="margin-top:32px">Biaya operasional</h2>
+  <div class="card"><table id="tOps"></table></div>
 </section>
 
 <section id="data" class="view">
-  <h2>Sumber data dan asumsi</h2>
+  <h2>Sumber Data dan Asumsi</h2>
+  <div class="card" style="margin-bottom:16px"><table id="tSheets"></table></div>
+  <div class="card" style="margin-bottom:16px"><table id="tCmp"></table></div>
   <div id="assump"></div>
 </section>
 </main>
@@ -112,9 +117,10 @@ body.has #empty{display:none}body:not(.has) .view,body:not(.has) nav{display:non
 /* Dashboard Keuangan Warung Mie Ayam
    Alur: Excel (database) -> parse() -> calc(skenario) -> render() */
 const $ = s => document.querySelector(s);
-const rp = n => 'Rp\u00A0' + Math.round(n).toLocaleString('id-ID');
-const jt = n => Math.abs(n) >= 1e6 ? 'Rp\u00A0' + (n / 1e6).toLocaleString('id-ID', {maximumFractionDigits: 1}) + ' jt' : rp(n);
-const pct = n => (n * 100).toLocaleString('id-ID', {maximumFractionDigits: 1}) + '%';
+const ok = x => typeof x === 'number' && isFinite(x);
+const rp = n => ok(n) ? 'Rp\u00A0' + Math.round(n).toLocaleString('id-ID') : '-';
+const jt = n => !ok(n) ? '-' : Math.abs(n) >= 1e6 ? 'Rp\u00A0' + (n / 1e6).toLocaleString('id-ID', {maximumFractionDigits: 1}) + ' jt' : rp(n);
+const pct = n => ok(n) ? (n * 100).toLocaleString('id-ID', {maximumFractionDigits: 1}) + '%' : '-';
 let D, base, S, charts = {};
 
 /* ---------- 1. Excel -> objek data ---------- */
@@ -123,42 +129,150 @@ function toSheets(wb) {
   wb.SheetNames.forEach(n => o[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], {header: 1, defval: null}));
   return o;
 }
+const isNum = x => typeof x === 'number' && isFinite(x);
+const norm = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const firstNum = r => (r || []).slice(1).find(isNum);
+const GAS = /\b(gas|lpg)\b/, SAN = /sanitasi/;
+
 function parse(sh) {
+  /* nama sheet dan label dicocokkan tanpa peduli huruf besar/kecil dan tanda baca.
+     Sheet atau baris yang tidak ada TIDAK menghentikan dashboard: nilainya null dan tampil sebagai "-". */
+  const lost = new Set();
+  const hasSheet = n => !!sh[n] || Object.keys(sh).some(k => norm(k) === norm(n));
+  const sheet = n => sh[n] || sh[Object.keys(sh).find(k => norm(k) === norm(n))] || [];
   const num = (s, label) => {
-    const r = (sh[s] || []).find(r => String(r[0] || '').trim().startsWith(label));
-    const v = r && r.slice(1).find(x => typeof x === 'number');
-    if (v === undefined) throw new Error(`Baris "${label}" tidak ditemukan di sheet "${s}"`);
-    return v;
+    if (!hasSheet(s)) { lost.add(`Sheet "${s}" tidak ada di file`); return null; }
+    /* hanya baris yang berisi angka yang dihitung (judul sheet bisa saja mirip label) */
+    const r = sheet(s).find(r => norm(r[0]).startsWith(norm(label)) && isNum(firstNum(r)));
+    if (!r) { lost.add(`${s} › ${label}`); return null; }
+    return firstNum(r);
   };
   const between = (s, from, to) => {
-    const rows = sh[s] || [], i = rows.findIndex(r => r[0] === from);
-    const j = rows.findIndex((r, k) => k > i && String(r[0] || '').startsWith(to));
+    if (!hasSheet(s)) { lost.add(`Sheet "${s}" tidak ada di file`); return []; }
+    const rows = sheet(s), i = rows.findIndex(r => norm(r[0]) === norm(from));
+    if (i < 0) { lost.add(`${s} › ${from}`); return []; }
+    const j = rows.findIndex((r, k) => k > i && norm(r[0]).startsWith(norm(to)));
     return rows.slice(i + 1, j < 0 ? undefined : j).filter(r => r[0]);
   };
   const H = 'HPP';
-  return {
+  const d = {
     recipe: between(H, 'Komponen', 'Total Biaya Bahan Baku').map(r => ({name: r[0], qty: r[1], unit: r[2], price: r[3], total: r[4]})),
     bowls: num(H, 'Mangkok per batch'), pack: num(H, 'Kemasan, sumpit'),
     daily: num(H, 'Target penjualan harian'), days: num(H, 'Hari kerja per bulan'),
     tubes: num(H, 'Gas LPG 3 kg: jumlah tabung'), tubePrice: num(H, 'Gas LPG 3 kg: harga'), sanit: num(H, 'Sanitasi dapur per bulan'),
     price: num('Harga Jual', 'Rekomendasi harga jual'), lo: num('Harga Jual', 'Kisaran harga pasar Jakarta Pusat (bawah)'), hi: num('Harga Jual', 'Kisaran harga pasar Jakarta Pusat (atas)'),
-    fixed: [['Listrik & air PAM', 'Listrik'], ['Penyusutan peralatan', 'Penyusutan'], ['Iuran RT & kebersihan', 'Iuran RT']].map(([n, k]) => ({name: n, v: num('BEP', k)})),
     cls: between('Klasifikasi', 'Komponen Biaya', 'Asumsi').map(r => ({name: r[0], type: r[1], why: r[2]})),
     assump: Object.fromEntries(['Biaya Operasional', 'Klasifikasi', 'HPP', 'Harga Jual', 'BEP', 'Proyeksi_LR'].map(s => {
-      const rows = sh[s] || [], i = rows.findIndex(r => r[0] === 'Asumsi');
+      const rows = sheet(s), i = rows.findIndex(r => r[0] === 'Asumsi');
       return [s, i < 0 ? [] : rows.slice(i + 1).map(r => r[0]).filter(Boolean)];
     }))
   };
+  Object.assign(d, readBreakEven(sh, sheet, d));
+  /* deteksi sheet: tiap sheet yang dikenali dashboard dicek satu per satu */
+  d.sheets = ['Biaya Operasional', 'Klasifikasi', 'HPP', 'Harga Jual', 'BEP', 'Proyeksi_LR'].map(n => {
+    const actual = sh[n] ? n : Object.keys(sh).find(k => norm(k) === norm(n)) || null;
+    if (!actual) lost.add(`Sheet "${n}" tidak ada di file`);
+    return {name: n, actual};
+  });
+  d.ops = between('Biaya Operasional', 'Kelompok Biaya', 'Asumsi').map(r => ({name: r[0], detail: r[1]}));
+  d.proj = (() => {   /* angka bulanan di sheet Proyeksi_LR, dipakai sebagai pembanding hasil dashboard */
+    const rows = sheet('Proyeksi_LR'), h = rows.findIndex(r => norm(r[0]) === 'komponen finansial');
+    if (h < 0) return {};
+    let c = rows[h].findIndex(x => norm(x).startsWith('total')); if (c < 0) c = 2;
+    const g = re => { const r = rows.slice(h + 1).find(r => re.test(norm(r[0]))); return r && isNum(r[c]) ? r[c] : null; };
+    return {rev: g(/^(pendapatan kotor|omzet)/), vc: g(/^total biaya variabel/), gp: g(/^laba kotor/), fc: g(/^total biaya tetap/), net: g(/^(estimasi )?laba bersih/)};
+  })();
+  if (!hasSheet('BEP')) lost.add('Sheet "BEP" tidak ada di file');
+  else if (!d.fixed.length) lost.add('BEP › Biaya tetap');
+  if (!d.recipe.length) lost.add('HPP › Komponen bahan baku');
+  d.lost = [...lost];
+  return d;
+}
+
+/* ---- Biaya tetap & titik impas: dibaca dari Excel, bukan dikunci ke 3 nama baris ----
+   Urutan pencarian (berhenti di yang pertama menghasilkan data):
+   1. Daftar di bawah judul "Biaya tetap" pada sheet BEP (jumlah baris bebas)
+   2. Komponen berklasifikasi "Tetap" di sheet Klasifikasi, nilainya dicari di sheet lain
+   3. Nama baris lama (Listrik, Penyusutan, Iuran RT)
+   4. Baris "Total biaya tetap" di mana pun                                             */
+function readBreakEven(sh, sheet, d) {
+  const names = Object.keys(sh);
+  const label = r => String(r[0] == null ? '' : r[0]).trim();
+  const STOP = /^(total|jumlah|asumsi)|variabel|kontribusi|titik impas|break even|^bep\b|harga jual|laba|omzet|pendapatan/;
+
+  const scanList = () => {
+    for (const n of names.filter(n => /bep|impas|break/i.test(n))) {
+      const rows = sh[n], i = rows.findIndex(r => /^biaya tetap/.test(norm(r[0])) || /^total biaya tetap/.test(norm(r[0])));
+      if (i < 0) continue;
+      if (/^(total|jumlah)/.test(norm(rows[i][0]))) { const v = firstNum(rows[i]); if (isNum(v)) return [{name: label(rows[i]), v}]; continue; }
+      const out = [];
+      for (let k = i + 1; k < rows.length; k++) {
+        const r = rows[k], l = label(r), v = firstNum(r);
+        if (!l || !isNum(v)) { if (out.length) break; else continue; }
+        if (STOP.test(norm(l))) break;
+        out.push({name: l, v});
+      }
+      if (out.length) return out;
+      const v = firstNum(rows[i]); if (isNum(v)) return [{name: label(rows[i]), v}];
+    }
+    return [];
+  };
+  const missing = [];
+  const fromCls = () => d.cls.filter(c => /tetap/i.test(c.type) && !GAS.test(norm(c.name)) && !SAN.test(norm(c.name))).map(c => {
+    const t = norm(c.name);
+    for (const n of names) {
+      if (norm(n) === 'klasifikasi') continue;
+      const r = sh[n].find(r => { const l = norm(r[0]); return l.length > 2 && (l === t || l.startsWith(t) || t.startsWith(l)); });
+      const v = r && firstNum(r);
+      if (isNum(v)) return {name: c.name, v};
+    }
+    missing.push(c.name);
+    return null;
+  }).filter(Boolean);
+  const legacy = () => [['Listrik & air PAM', 'Listrik'], ['Penyusutan peralatan', 'Penyusutan'], ['Iuran RT & kebersihan', 'Iuran RT']]
+    .map(([name, k]) => { try { return {name, v: num2('BEP', k)}; } catch (e) { return null; } }).filter(Boolean);
+  const num2 = (s, l) => { const r = sheet(s).find(r => norm(r[0]).startsWith(norm(l))), v = r && firstNum(r); if (!isNum(v)) throw 0; return v; };
+  const findAny = (re, extra) => { for (const n of names) for (const r of sh[n]) { if (norm(n) === 'proyeksi lr') continue;   /* kolom pertama sheet ini per mangkok, bukan total bulanan */
+    const l = norm(r[0]); if (re.test(l) && (!extra || extra.test(l))) { const v = firstNum(r); if (isNum(v) && v > 0) return v; } } return null; };
+
+  const excelFc = findAny(/^(total|jumlah) biaya tetap/);
+  const excelBep = findAny(/\b(bep|titik impas|break even)\b/, /\b(mangkok|unit|porsi)\b/);
+
+  let fixed = scanList(); const explicit = fixed.length > 0;
+  if (!explicit) {
+    fixed = fromCls();
+    if (missing.length) { const seen = new Set(fixed.map(x => x.v)); legacy().forEach(x => { if (!seen.has(x.v)) { fixed.push(x); missing.length = 0; } }); }
+  }
+  if (!fixed.length) fixed = legacy();
+  if (!fixed.length && excelFc) fixed = [{name: 'Total biaya tetap (dari Excel)', v: excelFc}];
+
+  const inList = re => fixed.some(x => re.test(norm(x.name)));
+  const clsFixed = re => d.cls.some(c => re.test(norm(c.name)) && /tetap/i.test(c.type));
+  const gasFixed = inList(GAS) || (!explicit && clsFixed(GAS));
+  const sanFixed = inList(SAN) || (!explicit && clsFixed(SAN));
+  if (gasFixed && !inList(GAS) && isNum(d.tubes) && isNum(d.tubePrice)) fixed.push({name: 'Gas LPG 3 kg', v: d.tubes * d.tubePrice});
+  if (sanFixed && !inList(SAN) && isNum(d.sanit)) fixed.push({name: 'Sanitasi dapur', v: d.sanit});
+  return {fixed, gasFixed, sanFixed, excelBep, excelFc, missing};
 }
 
 /* ---------- 2. Model keuangan ---------- */
 function calc(d, s) {
-  const k = 1 + s.infl / 100, vol = s.daily * s.days;
-  const items = d.recipe.map(x => ({n: x.name, v: x.total * k / d.bowls}));
-  items.push({n: 'Kemasan & alat sekali pakai', v: d.pack}, {n: 'Gas LPG 3 kg', v: d.tubes * d.tubePrice / vol}, {n: 'Sanitasi dapur', v: d.sanit / vol});
-  const hpp = items.reduce((a, x) => a + x.v, 0), cm = s.price - hpp, fc = d.fixed.reduce((a, x) => a + x.v, 0);
-  const rev = s.price * vol, vc = hpp * vol, gp = rev - vc, net = gp - fc, bep = cm > 0 ? Math.ceil(fc / cm) : Infinity;
-  return {items, hpp, cm, fc, vol, rev, vc, gp, net, bep, margin: net / rev, mos: (vol - bep) / vol};
+  /* null = data tidak ditemukan -> semua angka turunannya ikut null dan tampil "-" */
+  const k = 1 + (ok(s.infl) ? s.infl : 0) / 100;
+  const vol = ok(s.daily) && ok(s.days) ? s.daily * s.days : null;
+  const per = x => ok(x) && ok(vol) && vol > 0 ? x / vol : null;
+  const items = d.recipe.map(x => ({n: x.name, v: ok(x.total) && ok(d.bowls) && d.bowls > 0 ? x.total * k / d.bowls : null}));
+  items.push({n: 'Kemasan & alat sekali pakai', v: ok(d.pack) ? d.pack : null});
+  if (!d.gasFixed) items.push({n: 'Gas LPG 3 kg', v: ok(d.tubes) && ok(d.tubePrice) ? per(d.tubes * d.tubePrice) : null});   /* gas/sanitasi yang digolongkan tetap di Excel */
+  if (!d.sanFixed) items.push({n: 'Sanitasi dapur', v: per(d.sanit)});                                                        /* masuk biaya tetap, bukan HPP */
+  const hpp = d.recipe.length && items.every(x => ok(x.v)) ? items.reduce((a, x) => a + x.v, 0) : null;
+  const price = ok(s.price) ? s.price : null;
+  const fc = d.fixed.length ? d.fixed.reduce((a, x) => a + x.v, 0) : null;
+  const cm = ok(price) && ok(hpp) ? price - hpp : null;
+  const rev = ok(price) && ok(vol) ? price * vol : null, vc = ok(hpp) && ok(vol) ? hpp * vol : null;
+  const gp = ok(rev) && ok(vc) ? rev - vc : null, net = ok(gp) && ok(fc) ? gp - fc : null;
+  const bep = !ok(cm) || !ok(fc) ? null : cm > 0 ? Math.ceil(fc / cm) : Infinity;
+  return {items, hpp, cm, fc, vol, rev, vc, gp, net, bep, margin: ok(net) && rev ? net / rev : null, mos: ok(bep) && ok(vol) && vol > 0 ? (vol - bep) / vol : null};
 }
 
 /* ---------- 3. Tampilan ---------- */
@@ -167,37 +281,67 @@ function mk(id, cfg) { charts[id] = new Chart($('#' + id), Object.assign({option
 if (window.Chart) { Chart.defaults.font.family = '"IBM Plex Sans", sans-serif'; Chart.defaults.maintainAspectRatio = false; }
 
 function render() {
-  const m = calc(D, S), pos = m.net >= 0;
-  $('#lead').textContent = `Dengan ${S.daily} mangkok per hari selama ${S.days} hari dan harga ${rp(S.price)}, warung ini ${pos ? 'menghasilkan laba bersih' : 'mengalami rugi'} ${jt(Math.abs(m.net))} per bulan.`;
+  const m = calc(D, S), pos = ok(m.net) && m.net >= 0;
+  const bepTxt = m.bep === null ? '-' : m.bep === Infinity ? 'tidak tercapai' : m.bep.toLocaleString('id-ID') + ' mangkok';
+  const perDay = ok(m.bep) && ok(S.days) && S.days > 0 ? Math.ceil(m.bep / S.days) : null;
+  $('#lead').textContent = ok(m.net) && ok(S.daily) && ok(S.days) && ok(S.price)
+    ? `Dengan ${S.daily} mangkok per hari selama ${S.days} hari dan harga ${rp(S.price)}, warung ini ${pos ? 'menghasilkan laba bersih' : 'mengalami rugi'} ${jt(Math.abs(m.net))} per bulan.`
+    : 'Sebagian data tidak ditemukan di file Excel, jadi angka yang belum bisa dihitung ditampilkan sebagai "-".';
   $('#kpis').innerHTML = [
     ['Laba bersih / bulan', jt(m.net), `margin ${pct(m.margin)}`], ['Harga pokok / mangkok', rp(m.hpp), `margin kontribusi ${rp(m.cm)}`],
-    ['Titik impas', isFinite(m.bep) ? m.bep + ' mangkok' : 'tidak tercapai', isFinite(m.bep) ? `≈ ${Math.ceil(m.bep / S.days)} per hari · omzet ${jt(m.bep * S.price)}` : 'harga di bawah HPP'],
-    ['Batas aman penjualan', isFinite(m.bep) ? pct(m.mos) : '–', 'penjualan boleh turun sebelum rugi']
+    ['Titik impas', bepTxt, ok(m.bep) ? `≈ ${perDay === null ? '-' : perDay} per hari · omzet ${jt(ok(S.price) ? m.bep * S.price : null)}` : m.bep === Infinity ? 'harga di bawah HPP' : '-'],
+    ['Batas aman penjualan', pct(m.mos), 'penjualan boleh turun sebelum rugi']
   ].map(([a, b, c]) => `<div class="kpi"><small>${a}</small><span class="big">${b}</span><small>${c}</small></div>`).join('');
-  $('#rcSub').textContent = `${m.vol.toLocaleString('id-ID')} mangkok · ${S.days} hari kerja`;
-  $('#rc').innerHTML = [['Omzet', m.rev, ''], ['Biaya variabel (HPP)', -m.vc, 'neg'], ['Laba kotor', m.gp, ''], ['Biaya tetap', -m.fc, 'neg'], ['Laba bersih', m.net, 'tot']]
-    .map(([a, v, c]) => `<div class="${c}"><dt>${a}</dt><dd>${v < 0 ? '−' : ''}${rp(Math.abs(v))}</dd></div>`).join('');
-  const warn = S.price < D.lo || S.price > D.hi ? ` Harga ${rp(S.price)} di luar kisaran pasar ${rp(D.lo)}–${rp(D.hi)}.` : '';
-  $('#bepNote').textContent = `Biaya tetap ${rp(m.fc)} per bulan. Setiap mangkok menyumbang ${rp(m.cm)} setelah HPP.` + warn;
+  $('#rcSub').textContent = `${ok(m.vol) ? m.vol.toLocaleString('id-ID') : '-'} mangkok · ${ok(S.days) ? S.days : '-'} hari kerja`;
+  const money = v => ok(v) ? (v < 0 ? '−' : '') + rp(Math.abs(v)) : '-';
+  $('#rc').innerHTML = [['Omzet', m.rev, ''], ['Biaya variabel (HPP)', ok(m.vc) ? -m.vc : null, 'neg'], ['Laba kotor', m.gp, ''], ['Biaya tetap', ok(m.fc) ? -m.fc : null, 'neg'], ['Laba bersih', m.net, 'tot']]
+    .map(([a, v, c]) => `<div class="${c}"><dt>${a}</dt><dd>${money(v)}</dd></div>`).join('');
+  const warn = ok(S.price) && ok(D.lo) && ok(D.hi) && (S.price < D.lo || S.price > D.hi) ? ` Harga ${rp(S.price)} di luar kisaran pasar ${rp(D.lo)}–${rp(D.hi)}.` : '';
+  let note = (ok(m.fc) ? `Biaya tetap ${rp(m.fc)} per bulan. ` : 'Biaya tetap: - (tidak ditemukan). ') + (ok(m.cm) ? `Setiap mangkok menyumbang ${rp(m.cm)} setelah HPP.` : 'Margin kontribusi per mangkok: - (harga jual atau HPP tidak ditemukan).') + warn;
+  if (D.missing.length) note += ` Nilai biaya tetap untuk "${D.missing.join('", "')}" tidak ditemukan di Excel dan tidak ikut dihitung.`;
+  if (ok(m.bep) && D.excelBep && Math.ceil(D.excelBep) !== m.bep) note += ` Catatan: Excel mencantumkan titik impas ${Math.round(D.excelBep).toLocaleString('id-ID')} mangkok.`;
+  $('#bepNote').textContent = note;
+  $('#tFix').innerHTML = '<tr><th>Rincian titik impas</th><th class="r">Nilai</th></tr>' +
+    (D.fixed.length ? D.fixed.map(x => `<tr><td>${x.name}</td><td class="r">${rp(x.v)}</td></tr>`).join('') : '<tr><td>Biaya tetap</td><td class="r">-</td></tr>') +
+    `<tr><th>Total biaya tetap / bulan</th><th class="r">${rp(m.fc)}</th></tr>` +
+    `<tr><td>Harga jual per mangkok</td><td class="r">${rp(S.price)}</td></tr><tr><td>Harga pokok (HPP) per mangkok</td><td class="r">${rp(m.hpp)}</td></tr>` +
+    `<tr><td>Margin kontribusi per mangkok</td><td class="r">${rp(m.cm)}</td></tr>` +
+    `<tr><th>Titik impas (biaya tetap ÷ kontribusi)</th><th class="r">${bepTxt}</th></tr>` +
+    `<tr><td>Setara per hari kerja</td><td class="r">${perDay === null ? '-' : perDay.toLocaleString('id-ID') + ' mangkok'}</td></tr><tr><td>Omzet saat impas</td><td class="r">${ok(m.bep) && ok(S.price) ? rp(m.bep * S.price) : '-'}</td></tr>`;
 
   $('#tHpp').innerHTML = '<tr><th>Komponen</th><th class="r">Per mangkok</th><th class="r">Porsi</th></tr>' +
-    m.items.map(x => `<tr><td>${x.n}</td><td class="r">${rp(x.v)}</td><td class="r">${pct(x.v / m.hpp)}</td></tr>`).join('') +
+    m.items.map(x => `<tr><td>${x.n}</td><td class="r">${rp(x.v)}</td><td class="r">${ok(x.v) && ok(m.hpp) && m.hpp > 0 ? pct(x.v / m.hpp) : '-'}</td></tr>`).join('') +
     `<tr><th>Total HPP</th><th class="r">${rp(m.hpp)}</th><th></th></tr>`;
   $('#tCls').innerHTML = '<tr><th>Komponen</th><th>Klasifikasi</th><th>Dasar penentuan</th></tr>' +
-    D.cls.map(x => { const f = /tetap/i.test(x.type); return `<tr><td>${x.name}</td><td><span class="tag ${f ? 'f' : 'v'}">${f ? 'Tetap' : 'Variabel'}</span></td><td>${x.why}</td></tr>`; }).join('');
+    (D.cls.length ? D.cls.map(x => { const f = /tetap/i.test(x.type); return `<tr><td>${x.name}</td><td><span class="tag ${f ? 'f' : 'v'}">${f ? 'Tetap' : 'Variabel'}</span></td><td>${x.why == null ? '-' : x.why}</td></tr>`; }).join('')
+      : '<tr><td>-</td><td>-</td><td>-</td></tr>');
 
-  const xmax = Math.max(m.vol * 1.4, (isFinite(m.bep) ? m.bep : 0) * 2);
-  const pts = {rev: [{x: 0, y: 0}, {x: xmax, y: S.price * xmax}], cost: [{x: 0, y: m.fc}, {x: xmax, y: m.fc + m.hpp * xmax}]};
+  const USE = {'Biaya Operasional': 'Daftar biaya operasional', 'Klasifikasi': 'Klasifikasi biaya tetap dan variabel', 'HPP': 'Resep, HPP, target penjualan', 'Harga Jual': 'Harga jual dan kisaran pasar', 'BEP': 'Biaya tetap dan titik impas', 'Proyeksi_LR': 'Pembanding laba rugi bulanan'};
+  $('#tSheets').innerHTML = '<tr><th>Sheet yang dicari</th><th>Status</th><th>Dipakai untuk</th></tr>' +
+    D.sheets.map(x => `<tr><td>${x.name}</td><td>${x.actual ? `<span class="tag f">Terdeteksi</span>${x.actual !== x.name ? ' (' + x.actual + ')' : ''}` : '-'}</td><td>${x.actual ? USE[x.name] : '-'}</td></tr>`).join('');
+  const P = D.proj || {}, same = (a, b) => ok(a) && ok(b) ? (Math.abs(a - b) <= 1 ? '<span class="tag f">Sama</span>' : '<span class="tag v">Beda</span>') : '-';
+  const cmp = [['Omzet / bulan', P.rev, m.rev], ['Biaya variabel (HPP) / bulan', P.vc, m.vc], ['Laba kotor / bulan', P.gp, m.gp], ['Biaya tetap / bulan', ok(P.fc) ? P.fc : D.excelFc, m.fc], ['Laba bersih / bulan', P.net, m.net]];
+  $('#tCmp').innerHTML = '<tr><th>Cek silang dengan angka di Excel</th><th class="r">Di Excel</th><th class="r">Di dashboard</th><th>Hasil</th></tr>' +
+    cmp.map(([a, x, y]) => `<tr><td>${a}</td><td class="r">${rp(x)}</td><td class="r">${rp(y)}</td><td>${same(x, y)}</td></tr>`).join('') +
+    `<tr><td>Titik impas (mangkok)</td><td class="r">${ok(D.excelBep) ? Math.round(D.excelBep).toLocaleString('id-ID') : '-'}</td><td class="r">${ok(m.bep) ? m.bep.toLocaleString('id-ID') : '-'}</td><td>${ok(D.excelBep) && ok(m.bep) ? (Math.ceil(D.excelBep) === m.bep ? '<span class="tag f">Sama</span>' : '<span class="tag v">Beda</span>') : '-'}</td></tr>`;
+  $('#tOps').innerHTML = '<tr><th>Kelompok biaya</th><th>Rincian</th></tr>' +
+    (D.ops.length ? D.ops.map(x => `<tr><td>${x.name}</td><td>${x.detail == null ? '-' : x.detail}</td></tr>`).join('') : '<tr><td>-</td><td>-</td></tr>');
+
+  const xmax = Math.max(ok(m.vol) ? m.vol * 1.4 : 0, ok(m.bep) ? m.bep * 2 : 0, 10);
   const cv = charts.cCvp.data.datasets;
-  cv[0].data = pts.rev; cv[1].data = pts.cost; cv[2].data = isFinite(m.bep) ? [{x: m.bep, y: m.bep * S.price}] : []; cv[3].data = [{x: m.vol, y: m.rev}];
-  charts.cHpp.data.labels = m.items.map(x => x.n); charts.cHpp.data.datasets[0].data = m.items.map(x => Math.round(x.v));
-  charts.cLr.data.datasets[0].data = [m.rev, m.vc, m.gp, m.fc, m.net];
+  cv[0].data = ok(S.price) ? [{x: 0, y: 0}, {x: xmax, y: S.price * xmax}] : [];
+  cv[1].data = ok(m.fc) && ok(m.hpp) ? [{x: 0, y: m.fc}, {x: xmax, y: m.fc + m.hpp * xmax}] : [];
+  cv[2].data = ok(m.bep) && ok(S.price) ? [{x: m.bep, y: m.bep * S.price}] : [];
+  cv[3].data = ok(m.vol) && ok(m.rev) ? [{x: m.vol, y: m.rev}] : [];
+  const known = m.items.filter(x => ok(x.v));
+  charts.cHpp.data.labels = known.map(x => x.n); charts.cHpp.data.datasets[0].data = known.map(x => Math.round(x.v));
+  charts.cLr.data.datasets[0].data = [m.rev, m.vc, m.gp, m.fc, m.net].map(v => ok(v) ? v : null);
   Object.values(charts).forEach(c => c.update('none'));
 }
 
 function build() {
   S = {price: D.price, daily: D.daily, days: D.days, infl: 0}; base = {...S};
-  $('#assump').innerHTML = Object.entries(D.assump).filter(([, a]) => a.length).map(([s, a]) => `<details><summary>Asumsi · ${s.replace('_', ' ')}</summary><ol>${a.map(t => `<li>${t.replace(/^\d+\.\s*/, '')}</li>`).join('')}</ol></details>`).join('');
+  $('#assump').innerHTML = (D.lost.length ? `<details open><summary>Data tidak ditemukan di file (ditampilkan sebagai "-")</summary><ol>${D.lost.map(t => `<li>${t}</li>`).join('')}</ol></details>` : '') + Object.entries(D.assump).filter(([, a]) => a.length).map(([s, a]) => `<details><summary>Asumsi · ${s.replace('_', ' ')}</summary><ol>${a.map(t => `<li>${t.replace(/^\d+\.\s*/, '')}</li>`).join('')}</ol></details>`).join('');
 
   const tip = {callbacks: {label: c => ' ' + (c.dataset.label ? c.dataset.label + ': ' : '') + rp(c.parsed.y ?? c.parsed.x ?? c.parsed)}};
   Object.values(charts).forEach(c => c.destroy()); charts = {};
@@ -215,8 +359,8 @@ function build() {
 function status(txt, cls) { const p = $('#src'); p.textContent = txt; p.className = 'pill ' + cls; }
 function load(sheets, label) {
   if (!window.Chart) { alert('Chart.js tidak termuat. Periksa koneksi internet lalu refresh.'); return; }
-  try { D = parse(sheets); build(); document.body.classList.add('has'); status(label, 'ok'); show(location.hash.slice(1)); }
-  catch (e) { alert('File Excel tidak sesuai format dashboard.\n' + e.message); }
+  try { D = parse(sheets); build(); document.body.classList.add('has'); status(label + (D.lost.length ? ` · ${D.lost.length} data tidak ditemukan` : ''), D.lost.length ? 'warn' : 'ok'); show(location.hash.slice(1)); }
+  catch (e) { alert('File Excel tidak dapat diproses.\n' + e.message); }
 }
 async function addFile(f) {
   if (!f) return;
